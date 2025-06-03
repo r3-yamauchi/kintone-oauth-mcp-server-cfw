@@ -4,9 +4,11 @@
 declare namespace Cloudflare {
 	interface Env {
 		OAUTH_KV: KVNamespace;
-		GITHUB_CLIENT_ID: "1234567890";
-		GITHUB_CLIENT_SECRET: "1234567890";
-		COOKIE_ENCRYPTION_KEY: "1234567890";
+		CYBOZU_CLIENT_ID: string;
+		CYBOZU_CLIENT_SECRET: string;
+		CYBOZU_SUBDOMAIN: string;
+		COOKIE_ENCRYPTION_KEY: string;
+		WORKER_URL: string;
 		MCP_OBJECT: DurableObjectNamespace<import("./src/index").MyMCP>;
 		AI: Ai;
 	}

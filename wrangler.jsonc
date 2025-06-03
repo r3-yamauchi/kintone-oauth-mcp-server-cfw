@@ -4,16 +4,18 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "my-mcp-server-kintone-auth",
+	"name": "mcp-kintone-oauth",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-03-10",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
 	"vars": {
-		"GITHUB_CLIENT_ID": "1234567890",
-		"GITHUB_CLIENT_SECRET": "1234567890",
-		"COOKIE_ENCRYPTION_KEY": "1234567890"
+		"CYBOZU_CLIENT_ID": "<your cybozu.com client id>",
+		"CYBOZU_CLIENT_SECRET": "<your cybozu.com client secret>",
+		"CYBOZU_SUBDOMAIN": "<your cybozu.com sub domain>",
+		"COOKIE_ENCRYPTION_KEY": "<your cookie encryption key>",
+		"WORKER_URL": "<your worker url>"
 	},
 	"migrations": [
 		{
@@ -34,7 +36,7 @@
 	"kv_namespaces": [
 		{
 			"binding": "OAUTH_KV",
-			"id": "<Add-KV-ID>"
+			"id": "<your cloudflare kv id>"
 		}
 	],
 	"ai": {

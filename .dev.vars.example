@@ -1,3 +1,5 @@
-GITHUB_CLIENT_ID=<your github client id>
-GITHUB_CLIENT_SECRET=<your github client secret>
-COOKIE_ENCRYPTION_KEY=<your cookie cookie encryption key>
+CYBOZU_CLIENT_ID=<your cybozu.com client id>
+CYBOZU_CLIENT_SECRET=<your cybozu.com client secret>
+CYBOZU_SUBDOMAIN=<your cybozu.com sub domain>
+COOKIE_ENCRYPTION_KEY=<your cookie encryption key>
+WORKER_URL=localhost:8788

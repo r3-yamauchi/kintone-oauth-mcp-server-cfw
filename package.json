@@ -1,10 +1,9 @@
 {
-  "name": "remote-mcp-github-oauth",
-  "version": "0.0.1",
-  "private": true,
+  "name": "kintone-oauth-mcp-server-cfw",
+  "version": "1.0.0",
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --local-protocol https",
     "start": "wrangler dev",
     "cf-typegen": "wrangler types",
     "type-check": "tsc --noEmit"

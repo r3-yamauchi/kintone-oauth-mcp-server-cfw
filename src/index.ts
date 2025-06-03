@@ -2,8 +2,7 @@ import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { Octokit } from "octokit";
-import { GitHubHandler } from "./github-handler";
+import { CybozuHandler } from "./cybozu-handler";
 
 // Context from the auth process, encrypted & stored in the auth token
 // and provided to the DurableMCP as this.props
@@ -12,6 +11,14 @@ type Props = {
   name: string;
   email: string;
   accessToken: string;
+  subdomain: string;
+};
+
+// kintone API error response type
+type KintoneErrorResponse = {
+  code?: string;
+  id?: string;
+  message?: string;
 };
 
 const ALLOWED_USERNAMES = new Set<string>([
@@ -21,65 +28,159 @@ const ALLOWED_USERNAMES = new Set<string>([
 
 export class MyMCP extends McpAgent<Env, {}, Props> {
   server = new McpServer({
-    name: "Github OAuth Proxy Demo",
+    name: "kintone MCP Server",
     version: "1.0.0",
   });
 
   async init() {
-    // Hello, world!
-    this.server.tool("add", "Add two numbers the way only MCP can", { a: z.number(), b: z.number() }, async ({ a, b }) => ({
-      content: [{ type: "text", text: String(a + b) }],
-    }));
-
-    // Use the upstream access token to facilitate tools
-    this.server.tool("userInfoOctokit", "Get user info from GitHub, via Octokit", {}, async () => {
-      const octokit = new Octokit({ auth: this.props.accessToken });
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(await octokit.rest.users.getAuthenticated()),
+    // Debug: Log access token and subdomain
+    console.error("=== MCP Init Debug Info ===");
+    console.error("Access Token:", this.props.accessToken);
+    console.error("Subdomain:", this.props.subdomain);
+    console.error("User Login:", this.props.login);
+    console.error("=========================");
+    
+    // List records from a kintone app
+    this.server.tool(
+      "getRecords", 
+      "Get records from a kintone app", 
+      { 
+        appId: z.union([z.number(), z.string()]).describe("The kintone app ID"),
+        query: z.string().optional().describe("Query to filter records (optional)"),
+        fields: z.array(z.string()).optional().describe("Fields to retrieve (optional)")
+      }, 
+      async ({ appId, query, fields }) => {
+        const url = `https://${this.props.subdomain}.cybozu.com/k/v1/records.json`;
+        
+        // Build request body for POST
+        const body: any = {
+          app: String(appId)
+        };
+        if (query) body.query = query;
+        if (fields && fields.length > 0) body.fields = fields;
+        
+        console.error("=== getRecords Request Debug ===");
+        console.error("URL:", url);
+        console.error("Method: POST with X-HTTP-Method-Override: GET");
+        console.error("Body:", JSON.stringify(body, null, 2));
+        console.error("Access Token:", this.props.accessToken);
+        console.error("==============================");
+        
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${this.props.accessToken}`,
+            "Content-Type": "application/json",
+            "X-HTTP-Method-Override": "GET"
           },
-        ],
-      };
-    });
-
-    // Dynamically add tools based on the user's login. In this case, I want to limit
-    // access to my Image Generation tool to just me
-    if (ALLOWED_USERNAMES.has(this.props.login)) {
-      this.server.tool(
-        "generateImage",
-        "Generate an image using the `flux-1-schnell` model. Works best with 8 steps.",
-        {
-          prompt: z.string().describe("A text description of the image you want to generate."),
-          steps: z
-            .number()
-            .min(4)
-            .max(8)
-            .default(4)
-            .describe(
-              "The number of diffusion steps; higher values can improve quality but take longer. Must be between 4 and 8, inclusive.",
-            ),
-        },
-        async ({ prompt, steps }) => {
-          const response = await this.env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
-            prompt,
-            steps,
-          });
-
+          body: JSON.stringify(body)
+        });
+        
+        const data = await response.json() as KintoneErrorResponse | any;
+        
+        if (!response.ok) {
+          console.error("=== API Error Response ===");
+          console.error("Status:", response.status);
+          console.error("Response:", JSON.stringify(data, null, 2));
+          console.error("========================");
+          
+          // Provide more helpful error messages
+          const errorData = data as KintoneErrorResponse;
+          let errorMessage = `Error ${response.status}: ${errorData.message || 'Unknown error'}`;
           return {
-            content: [{ type: "image", data: response.image!, mimeType: "image/jpeg" }],
+            content: [{ type: "text", text: errorMessage }],
           };
-        },
-      );
-    }
+        }
+        
+        return {
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        };
+      }
+    );
+
+    // Add a record to a kintone app
+    this.server.tool(
+      "addRecord",
+      "Add a new record to a kintone app",
+      {
+        appId: z.union([z.number(), z.string()]).describe("The kintone app ID"),
+        record: z.record(z.string(), z.any()).describe("Record data as key-value pairs")
+      },
+      async ({ appId, record }) => {
+        const url = `https://${this.props.subdomain}.cybozu.com/k/v1/record.json`;
+        
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${this.props.accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            app: String(appId),
+            record: record
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error("=== API Error Response ===");
+          console.error("Status:", response.status);
+          console.error("Response:", JSON.stringify(data, null, 2));
+          console.error("========================");
+        }
+        
+        return {
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        };
+      }
+    );
+
+    // Get app information
+    this.server.tool(
+      "getApp",
+      "Get kintone app information including fields",
+      {
+        appId: z.union([z.number(), z.string()]).describe("The kintone app ID")
+      },
+      async ({ appId }) => {
+        const url = `https://${this.props.subdomain}.cybozu.com/k/v1/app/form/fields.json`;
+        
+        const body = {
+          app: String(appId)
+        };
+        
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${this.props.accessToken}`,
+            "Content-Type": "application/json",
+            "X-HTTP-Method-Override": "GET"
+          },
+          body: JSON.stringify(body)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error("=== API Error Response ===");
+          console.error("Status:", response.status);
+          console.error("Response:", JSON.stringify(data, null, 2));
+          console.error("========================");
+        }
+        
+        return {
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+        };
+      }
+    );
   }
 }
 
 export default new OAuthProvider({
   apiRoute: "/sse",
   apiHandler: MyMCP.mount("/sse") as any,
-  defaultHandler: GitHubHandler as any,
+  defaultHandler: CybozuHandler as any,
   authorizeEndpoint: "/authorize",
   tokenEndpoint: "/token",
   clientRegistrationEndpoint: "/register",

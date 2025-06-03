@@ -1,140 +1,210 @@
-# Model Context Protocol (MCP) Server + Github OAuth
+# リモート Model Context Protocol (MCP) サーバー for kintone via OAuth on Cloudflare Workers
 
-This is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) server that supports remote MCP connections, with Github OAuth built-in.
+これは Cloudflare Workers として deploy可能な [kintone](https://kintone.cybozu.co.jp/) 用の [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) サーバーのサンプルコードです。
 
-You can deploy it to your own Cloudflare account, and after you create your own Github OAuth client app, you'll have a fully functional remote MCP server that you can build off. Users will be able to connect to your MCP server by signing in with their GitHub account.
+OAuth で認証するため、（秘匿すべき）認証情報をローカルディスク内などに保存しません。
 
-You can use this as a reference example for how to integrate other OAuth providers with an MCP server deployed to Cloudflare, using the [`workers-oauth-provider` library](https://github.com/cloudflare/workers-oauth-provider).
+ある cybozu.comドメイン用に この MCP Sever を deploy しておけば、そのドメインを使用する全ての人がこの MCP Server を共用利用することができます。
 
-The MCP server (powered by [Cloudflare Workers](https://developers.cloudflare.com/workers/)): 
+プログラムをローカルにセットアップする必要がなく、Webブラウザー版の Claude からも使用することができます。
 
-* Acts as OAuth _Server_ to your MCP clients
-* Acts as OAuth _Client_ to your _real_ OAuth server (in this case, GitHub)
+## 始め方
 
-## Getting Started
+### cybozu.com共通管理画面で OAuthクライアントを追加
 
-Clone the repo directly & install dependencies: `npm install`.
+[こちらの手順](https://cybozu.dev/ja/common/docs/oauth-client/add-client/) に従い OAuthクライアントを追加してください。
 
-Alternatively, you can use the command line below to get the remote MCP Server created on your local machine:
+- 「クライアント名」は分かりやすい名前を設定（「kintone Remote MCP Server on Cloudflare Workers」などといったように）
+- 「リダイレクトエンドポイント」の指定は、この MCP Server を Cloudflare Workers へ deploy したあとで `https://<your-subdomain>.workers.dev/callback` を指定しますので、いったんは `https://localhost:8788/callback` を設定します。
+- 「保存」をクリックすると「クライアントID」と「クライアントシークレット」が自動的に生成されますので手元に控えてください。
+
+<!-- markdownlint-disable MD033 -->
+<img height="400" src="png/kintone-oauth-mcp-server-cfw1.png" alt="OAuthクライアントを追加" />
+<!-- markdownlint-enable MD033 -->
+
+### Cloudflare Workers への deploy
+
+- リポジトリをクローンし、依存関係をインストールします: `npm install`.
+
+- OAuthクライアントを作成した際に控えた値を wrangler CLI で設定し、Wranglerの設定ファイル（wrangler.jsonc）内の記述も更新します。：
+
 ```bash
-npm create cloudflare@latest -- my-mcp-server --template=cloudflare/ai/demos/remote-mcp-github-oauth
-```
-
-### For Production
-Create a new [GitHub OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app): 
-- For the Homepage URL, specify `https://mcp-github-oauth.<your-subdomain>.workers.dev`
-- For the Authorization callback URL, specify `https://mcp-github-oauth.<your-subdomain>.workers.dev/callback`
-- Note your Client ID and generate a Client secret. 
-- Set secrets via Wrangler
-```bash
-wrangler secret put GITHUB_CLIENT_ID
-wrangler secret put GITHUB_CLIENT_SECRET
+wrangler secret put CYBOZU_CLIENT_ID
+wrangler secret put CYBOZU_CLIENT_SECRET
+wrangler secret put CYBOZU_SUBDOMAIN # your cybozu.com subdomain
 wrangler secret put COOKIE_ENCRYPTION_KEY # add any random string here e.g. openssl rand -hex 32
 ```
-#### Set up a KV namespace
-- Create the KV namespace: 
+
+#### KV名前空間の作成
+
+- wrangler CLI で以下を実行して KV名前空間を作成します。:
+
 `wrangler kv:namespace create "OAUTH_KV"`
-- Update the Wrangler file with the KV ID
 
-#### Deploy & Test
-Deploy the MCP server to make it available on your workers.dev domain 
-` wrangler deploy`
+- Wranglerの設定ファイル（wrangler.jsonc）内の kv_namespaces 欄に KV ID を記入してください。
 
-Test the remote server using [Inspector](https://modelcontextprotocol.io/docs/tools/inspector): 
+- 以下のコマンドを実行して Cloudflare Workers へ deploy してください。
 
-```
-npx @modelcontextprotocol/inspector@latest
-```
-Enter `https://mcp-github-oauth.<your-subdomain>.workers.dev/sse` and hit connect. Once you go through the authentication flow, you'll see the Tools working: 
+`wrangler deploy`
 
-<img width="640" alt="image" src="https://github.com/user-attachments/assets/7973f392-0a9d-4712-b679-6dd23f824287" />
+- deploy が完了したら Workers の URL を cybozu.com共通管理画面の OAuthクライアントの「リダイレクトエンドポイント」欄にセットし、末尾に `/callback` を付けてください。 `https://<your-subdomain>.workers.dev/callback` と入力することになります。
 
-You now have a remote MCP server deployed! 
+### Claude WebアプリからリモートMCPサーバーにアクセス
 
-### Access Control
+- [Claude Webアプリのインテグレーション管理画面](https://claude.ai/settings/integrations) にアクセスし
+「インテグレーションを追加」をクリックします。
 
-This MCP server uses GitHub OAuth for authentication. All authenticated GitHub users can access basic tools like "add" and "userInfoOctokit".
+- 「連携名」は MCP Server を識別する際の名前になるので、分かりやすいものを付けます。
 
-The "generateImage" tool is restricted to specific GitHub users listed in the `ALLOWED_USERNAMES` configuration:
+- 「連携URL」に `https://<your-subdomain>.workers.dev/sse` と入力してください。
 
-```typescript
-// Add GitHub usernames for image generation access
-const ALLOWED_USERNAMES = new Set([
-  'yourusername',
-  'teammate1'
-]);
-```
+<!-- markdownlint-disable MD033 -->
+<img height="400" src="png/kintone-oauth-mcp-server-cfw2.png" alt="インテグレーションを追加" />
+<!-- markdownlint-enable MD033 -->
 
-### Access the remote MCP server from Claude Desktop
+- 「追加」ボタンをクリックしたのち、「連携/連携させる」をクリックします。 OAuthの確認画面が表示されるので「Approve」「許可」をクリックします。
 
-Open Claude Desktop and navigate to Settings -> Developer -> Edit Config. This opens the configuration file that controls which MCP servers Claude can access.
+<!-- markdownlint-disable MD033 -->
+<img height="400" src="png/kintone-oauth-mcp-server-cfw3.png" alt="OAuthクライアントを追加" />
+<!-- markdownlint-enable MD033 -->
 
-Replace the content with the following configuration. Once you restart Claude Desktop, a browser window will open showing your OAuth login page. Complete the authentication flow to grant Claude access to your MCP server. After you grant access, the tools will become available for you to use. 
+<!-- markdownlint-disable MD033 -->
+<img height="400" src="png/kintone-oauth-mcp-server-cfw4.png" alt="OAuthクライアントを追加" />
+<!-- markdownlint-enable MD033 -->
 
-```
+- Claude WebアプリからリモートMCPサーバーを利用できるようになります。
+
+<!-- markdownlint-disable MD033 -->
+<img height="400" src="png/kintone-oauth-mcp-server-cfw5.png" alt="OAuthクライアントを追加" />
+<!-- markdownlint-enable MD033 -->
+
+
+### Claude DesktopからリモートMCPサーバーにアクセス
+
+Claude Desktopで、Settings -> Developer -> Edit Configを開き、以下の設定を追加。Claude Desktopを再起動すると、OAuthログイン画面が表示され、認証フローを完了するとClaudeがMCPサーバーにアクセスできるようになります。
+
+
+```json
 {
   "mcpServers": {
-    "math": {
+    "kintone": {
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://mcp-github-oauth.<your-subdomain>.workers.dev/sse"
+        "https://<your-subdomain>.workers.dev/sse"
       ]
     }
   }
 }
 ```
 
-Once the Tools (under 🔨) show up in the interface, you can ask Claude to use them. For example: "Could you use the math tool to add 23 and 19?". Claude should invoke the tool and show the result generated by the MCP server.
+## このプロジェクトの由来
 
-### For Local Development
-If you'd like to iterate and test your MCP server, you can do so in local development. This will require you to create another OAuth App on GitHub: 
-- For the Homepage URL, specify `http://localhost:8788`
-- For the Authorization callback URL, specify `http://localhost:8788/callback`
-- Note your Client ID and generate a Client secret. 
-- Create a `.dev.vars` file in your project root with: 
-```
-GITHUB_CLIENT_ID=your_development_github_client_id
-GITHUB_CLIENT_SECRET=your_development_github_client_secret
+このプロジェクトは、もともとCloudflareのGitHub OAuthテンプレートを使用して作成されました：
+
+```bash
+npm create cloudflare@latest -- kintone-oauth-mcp-server-cfw --template=cloudflare/ai/demos/remote-mcp-github-oauth
 ```
 
-#### Develop & Test
-Run the server locally to make it available at `http://localhost:8788`
-`wrangler dev`
+このテンプレート（[CloudflareのRemote MCP Serverガイド](https://developers.cloudflare.com/agents/guides/remote-mcp-server/)で説明あり）は、OAuth認証を備えたMCPサーバーの構築基盤を提供します。本プロジェクトでは、このテンプレートを Cybozu/kintone OAuth 用に改修し、CybozuのOAuth 2.0実装に対応した認証フローを実現しています。
 
-To test the local server, enter `http://localhost:8788/sse` into Inspector and hit connect. Once you follow the prompts, you'll be able to "List Tools". 
+## 元のテンプレートからの主な変更点
 
-#### Using Claude and other MCP Clients
+GitHub OAuthテンプレートをkintoneに対応させるため、以下の変更を行いました：
 
-When using Claude to connect to your remote MCP server, you may see some error messages. This is because Claude Desktop doesn't yet support remote MCP servers, so it sometimes gets confused. To verify whether the MCP server is connected, hover over the 🔨 icon in the bottom right corner of Claude's interface. You should see your tools available there.
+1. **OAuthハンドラー**: `src/cybozu-handler.ts` を新規作成し、kintoneのOAuthフローを処理（ `github-handler.ts` を置き換え）
+2. **OAuthエンドポイント**: Cybozu OAuthのエンドポイントに変更：
+   - 認可: `https://{subdomain}.cybozu.com/oauth2/authorization`
+   - トークン: `https://{subdomain}.cybozu.com/oauth2/token`
+3. **認証方式**: kintoneのOAuth 2.0仕様に合わせ（クレデンシャルはリクエストボディに含める）
+4. **環境変数**: GitHub用からkintone用に変更：
+   - `GITHUB_CLIENT_ID` → `CYBOZU_CLIENT_ID`
+   - `GITHUB_CLIENT_SECRET` → `CYBOZU_CLIENT_SECRET`
+   - `CYBOZU_SUBDOMAIN` を追加（kintoneのサブドメイン用）
+5. **スコープ**: kintone APIのスコープを使用 (例: `k:app_record:read`, `k:app_record:write`, `k:app_settings:read` )
 
-#### Using Cursor and other MCP Clients
+## ローカル開発とテスト
 
-To connect Cursor with your MCP server, choose `Type`: "Command" and in the `Command` field, combine the command and args fields into one (e.g. `npx mcp-remote https://<your-worker-name>.<your-subdomain>.workers.dev/sse`).
+HTTPSを有効にしてサーバーを起動:
 
-Note that while Cursor supports HTTP+SSE servers, it doesn't support authentication, so you still need to use `mcp-remote` (and to use a STDIO server, not an HTTP one).
+```bash
+wrangler dev --local-protocol https
+```
 
-You can connect your MCP server to other MCP clients like Windsurf by opening the client's configuration file, adding the same JSON that was used for the Claude setup, and restarting the MCP client.
+Inspectorで `https://localhost:8788/sse` に接続してテスト。
 
-## How does it work? 
+**注意**: 初回アクセス時には、ブラウザで自己署名証明書の警告を受け入れる必要があります。
 
-#### OAuth Provider
-The OAuth Provider library serves as a complete OAuth 2.1 server implementation for Cloudflare Workers. It handles the complexities of the OAuth flow, including token issuance, validation, and management. In this project, it plays the dual role of:
+## OAuth設定トラブルシューティング
 
-- Authenticating MCP clients that connect to your server
-- Managing the connection to GitHub's OAuth services
-- Securely storing tokens and authentication state in KV storage
+### 401エラーが発生する場合
 
-#### Durable MCP
-Durable MCP extends the base MCP functionality with Cloudflare's Durable Objects, providing:
-- Persistent state management for your MCP server
-- Secure storage of authentication context between requests
-- Access to authenticated user information via `this.props`
-- Support for conditional tool availability based on user identity
+以下の点を確認してください：
 
-#### MCP Remote
-The MCP Remote library enables your server to expose tools that can be invoked by MCP clients like the Inspector. It:
-- Defines the protocol for communication between clients and your server
-- Provides a structured way to define tools
-- Handles serialization and deserialization of requests and responses
-- Maintains the Server-Sent Events (SSE) connection between clients and your server
+1. **Cybozu Developer Networkでの設定**
+   - リダイレクトURIが完全一致していることを確認
+     - 本番環境: `https://<your-subdomain>.workers.dev/callback`
+     - 開発環境: `https://localhost:8788/callback`
+   - OAuthアプリケーションが「有効」になっている
+   - client_idとclient_secretが正しくコピーされている
+   - 必要なスコープが設定されている: `k:app_record:read k:app_record:write k:app_settings:read`
+
+2. **環境変数の確認**
+
+   ```bash
+   # .dev.varsファイルまたはwrangler secretsで以下を確認
+   CYBOZU_CLIENT_ID=<your-client-id>
+   CYBOZU_CLIENT_SECRET=<your-client-secret>
+   CYBOZU_SUBDOMAIN=<your-subdomain>
+   COOKIE_ENCRYPTION_KEY=<random-32-char-string>
+   ```
+
+3. **ログの確認**
+   開発サーバー起動時のコンソールで以下を確認：
+   - `OAuth Callback Received` - コールバックが正しく受信されているか
+   - `Starting Token Exchange` - トークン交換が開始されているか
+   - エラーレスポンスの詳細内容
+
+4. **kintone OAuth仕様**
+   - 認可エンドポイント: `https://{subdomain}.cybozu.com/oauth2/authorization`
+   - トークンエンドポイント: `https://{subdomain}.cybozu.com/oauth2/token`
+   - 認証方式: リクエストボディにclient_idとclient_secretを含める
+   - レスポンス形式: JSON
+
+5. **デバッグモード**
+   詳細なログを確認するには、開発サーバーを起動して実行できます：
+
+   ```bash
+   npm run dev
+   ```
+
+## 仕組みの概要
+
+### OAuthプロバイダー
+
+OAuth Providerライブラリは、Cloudflare Workers向けのOAuth 2.1サーバー実装です。
+このライブラリがOAuthフロー全体（トークン発行、検証、管理）を担当しています。具体的には：
+
+- MCPクライアントの認証
+- kintone OAuthサービスへの接続管理
+- KVストレージでのトークン・認証状態の安全な保存
+
+### MCP Remote
+
+MCP Remoteライブラリは、サーバーがクライアントにツールを提供できるようにします：
+
+- クライアントとサーバー間の通信プロトコルを定義
+- ツールの定義方法を提供
+- リクエスト/レスポンスのシリアライズ・デシリアライズを管理
+- クライアントとサーバー間のServer-Sent Events (SSE)接続を維持
+
+## MCP Server を使用するリスク
+
+他人が作成・実装した MCP server を使用する際には一定のリスクがあることを必ず念頭において利用してください。
+
+- [kintone AIラボ と kintone用 MCP Server の現在地](https://www.r3it.com/blog/kintone-ai-lab-20250501-yamauchi)
+
+**「kintone」はサイボウズ株式会社の登録商標です。**
+
+ここに記載している内容は情報提供を目的としており、個別のサポートはできません。
+設定内容についてのご質問やご自身の環境で動作しないといったお問い合わせをいただいても対応はできませんので、ご了承ください。

@@ -1,0 +1,21 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "kintone",
+    "cybozu",
+    "Cloudflare",
+    "wrangler",
+    "hono",
+    "OAUTH",
+    "btoa",
+    "atob",
+    "subdomain"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    "*.log",
+    ".git/**",
+    "package-lock.json"
+  ]
+}
