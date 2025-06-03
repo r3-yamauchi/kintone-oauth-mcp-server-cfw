@@ -22,17 +22,22 @@ OAuth で認証するため、（秘匿すべき）認証情報をローカル�
 <img height="400" src="png/kintone-oauth-mcp-server-cfw1.png" alt="OAuthクライアントを追加" />
 <!-- markdownlint-enable MD033 -->
 
+- OAuthクライアントの「利用者の設定」で、この MCP Server を利用させるユーザーを指定してください。
+
 ### Cloudflare Workers への deploy
 
 - リポジトリをクローンし、依存関係をインストールします: `npm install`.
 
-- OAuthクライアントを作成した際に控えた値を wrangler CLI で設定し、Wranglerの設定ファイル（wrangler.jsonc）内の記述も更新します。：
+- OAuthクライアントを作成した際に控えた値を Wranglerの設定ファイル（wrangler.jsonc）内に記入します。：
 
-```bash
-wrangler secret put CYBOZU_CLIENT_ID
-wrangler secret put CYBOZU_CLIENT_SECRET
-wrangler secret put CYBOZU_SUBDOMAIN # your cybozu.com subdomain
-wrangler secret put COOKIE_ENCRYPTION_KEY # add any random string here e.g. openssl rand -hex 32
+```json
+	"vars": {
+		"CYBOZU_CLIENT_ID": "<your cybozu.com client id>",
+		"CYBOZU_CLIENT_SECRET": "<your cybozu.com client secret>",
+		"CYBOZU_SUBDOMAIN": "<your cybozu.com sub domain>", # your cybozu.com subdomain
+		"COOKIE_ENCRYPTION_KEY": "<your cookie encryption key>", # add any random string here e.g. openssl rand -hex 32
+		"WORKER_URL": "<your worker url>"
+	},
 ```
 
 #### KV名前空間の作成
@@ -41,7 +46,7 @@ wrangler secret put COOKIE_ENCRYPTION_KEY # add any random string here e.g. open
 
 `wrangler kv:namespace create "OAUTH_KV"`
 
-- Wranglerの設定ファイル（wrangler.jsonc）内の kv_namespaces 欄に KV ID を記入してください。
+- Wranglerの設定ファイル（wrangler.jsonc）内の `<your cloudflare kv id>` 欄に、作成された KV の ID を記入してください。
 
 - 以下のコマンドを実行して Cloudflare Workers へ deploy してください。
 
