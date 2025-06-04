@@ -2,37 +2,37 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## プロジェクト概要
 
-This is a Model Context Protocol (MCP) server with kintone OAuth authentication, deployed to Cloudflare Workers. It acts as both an OAuth server to MCP clients and an OAuth client to kintone.
+これは、Cloudflare Workers上にデプロイされる、kintone OAuth認証を備えたModel Context Protocol (MCP)サーバーです。MCPクライアントに対してはOAuthサーバーとして、kintoneに対してはOAuthクライアントとして動作します。
 
-### Project Origin
+### プロジェクトの起源
 
-This project was initially created from the Cloudflare GitHub OAuth template:
+このプロジェクトは、CloudflareのGitHub OAuthテンプレートから作成されました：
 ```bash
 npm create cloudflare@latest -- kintone-oauth-mcp-server-cfw --template=cloudflare/ai/demos/remote-mcp-github-oauth
 ```
 
-The original template (documented at https://developers.cloudflare.com/agents/guides/remote-mcp-server/) provided GitHub OAuth integration. We have modified it to use **Cybozu/kintone OAuth** instead, requiring significant changes to the authentication flow and configuration.
+元のテンプレート（https://developers.cloudflare.com/agents/guides/remote-mcp-server/ に記載）はGitHub OAuth統合を提供していました。これを**Cybozu/kintone OAuth**を使用するように変更し、認証フローと設定に大幅な変更を加えています。
 
-## Development Commands
+## 開発コマンド
 
-### Local Development
+### ローカル開発
 ```bash
-npm install              # Install dependencies
-npm run dev             # Start local dev server with HTTPS on port 8788
-npm run type-check      # Run TypeScript type checking
+npm install              # 依存関係のインストール
+npm run dev             # ポート8788でHTTPSを有効にしたローカル開発サーバーを起動
+npm run type-check      # TypeScriptの型チェック
 ```
 
-**Note**: The `npm run dev` command automatically runs with HTTPS enabled (`--local-protocol https`) as required by Cybozu OAuth.
+**注意**: `npm run dev`コマンドは、Cybozu OAuthで必要とされるHTTPSを自動的に有効にして実行されます（`--local-protocol https`）。
 
-### Deployment
+### デプロイ
 ```bash
-npm run deploy          # Deploy to Cloudflare Workers
-npm run cf-typegen      # Generate Cloudflare types
+npm run deploy          # Cloudflare Workersへのデプロイ
+npm run cf-typegen      # Cloudflareの型を生成
 ```
 
-### Setting Secrets (Production)
+### シークレットの設定（本番環境）
 ```bash
 wrangler secret put CYBOZU_CLIENT_ID
 wrangler secret put CYBOZU_CLIENT_SECRET
@@ -40,69 +40,78 @@ wrangler secret put CYBOZU_SUBDOMAIN
 wrangler secret put COOKIE_ENCRYPTION_KEY
 ```
 
-### KV Namespace Setup
+### KVネームスペースのセットアップ
 ```bash
-wrangler kv:namespace create "OAUTH_KV"  # Create KV namespace
-# Update wrangler.jsonc with the generated KV ID
+wrangler kv:namespace create "OAUTH_KV"  # KVネームスペースを作成
+# 生成されたKV IDをwrangler.jsoncに更新
 ```
 
-## Architecture
+## アーキテクチャ
 
-### Core Components
+### コアコンポーネント
 
-1. **OAuth Provider** (`@cloudflare/workers-oauth-provider`)
-   - Handles dual OAuth flow (server to clients, client to kintone)
-   - Manages token issuance and validation
-   - Stores auth state in KV storage
+1. **OAuthプロバイダー** (`@cloudflare/workers-oauth-provider`)
+   - 二重OAuthフローを処理（サーバーからクライアント、クライアントからkintone）
+   - トークンの発行と検証を管理
+   - KVストレージに認証状態を保存
 
-2. **MCP Server** (`src/index.ts`)
-   - Extends `McpAgent` from `agents/mcp`
-   - Defines available tools (add, userInfoOctokit, generateImage)
-   - Access control via `ALLOWED_USERNAMES` for restricted tools
-   - Props context includes: login, name, email, accessToken, subdomain
+2. **MCPサーバー** (`src/index.ts`)
+   - `agents/mcp`から`McpAgent`を拡張
+   - 利用可能なツール（getRecords、addRecord、getApp）を定義
+   - プロップスコンテキストには以下が含まれる：login、name、email、accessToken、subdomain
 
-3. **kintone OAuth Handler** (`src/cybozu-handler.ts`)
-   - Manages authorization flow with kintone
-   - Handles approve/callback endpoints
-   - Exchanges codes for access tokens
-   - Stores user metadata in OAuth tokens
-   - Implements kintone-specific OAuth requirements
+3. **kintone OAuthハンドラー** (`src/cybozu-handler.ts`)
+   - kintoneとの認証フローを管理
+   - approve/callbackエンドポイントを処理
+   - コードをアクセストークンと交換
+   - OAuthトークンにユーザーメタデータを保存
+   - kintone固有のOAuth要件を実装
 
-4. **Configuration** (`wrangler.jsonc`)
-   - Durable Objects binding for MCP persistence
-   - KV namespace for OAuth state storage
-   - AI binding for image generation
-   - Environment variables for OAuth credentials (CYBOZU_*)
+4. **設定** (`wrangler.jsonc`)
+   - MCP永続化のためのDurable Objectsバインディング
+   - OAuth状態ストレージのためのKVネームスペース
+   - 画像生成のためのAIバインディング
+   - OAuth資格情報のための環境変数（CYBOZU_*）
 
-### Authentication Flow
-1. MCP client connects to `/sse` endpoint
-2. User redirected to `/authorize` for approval
-3. After approval, redirected to kintone OAuth (`https://{subdomain}.cybozu.com/oauth2/authorization`)
-4. kintone callback to `/callback` with authorization code
-5. Code exchanged for access token at kintone token endpoint
-6. User data stored in OAuth token props
-7. Client receives authenticated connection
+### 認証フロー
+1. MCPクライアントが`/sse`エンドポイントに接続
+2. ユーザーが承認のため`/authorize`にリダイレクト
+3. 承認後、kintone OAuthにリダイレクト（`https://{subdomain}.cybozu.com/oauth2/authorization`）
+4. kintoneが認証コードとともに`/callback`にコールバック
+5. kintoneトークンエンドポイントでコードをアクセストークンと交換
+6. OAuthトークンのプロップスにユーザーデータを保存
+7. クライアントが認証済み接続を受信
 
-### Key Files
-- `src/index.ts` - Main MCP server and tool definitions
-- `src/cybozu-handler.ts` - kintone OAuth flow handlers
-- `src/utils.ts` - OAuth utility functions (modified for kintone)
-- `src/workers-oauth-utils.ts` - OAuth UI/approval helpers
+### 主要ファイル
+- `src/index.ts` - メインMCPサーバーとツール定義
+- `src/cybozu-handler.ts` - kintone OAuthフローハンドラー
+- `src/utils.ts` - OAuthユーティリティ関数（kintone用に変更）
+- `src/workers-oauth-utils.ts` - OAuth UI/承認ヘルパー
 
-### kintone OAuth Specifics
+### kintone OAuth固有の事項
 
-When working with kintone OAuth:
-1. **Endpoints**: Use `https://{subdomain}.cybozu.com/oauth2/authorization` and `/oauth2/token`
-2. **Authentication**: Credentials go in request body, not Basic Auth header
-3. **Scopes**: Use kintone-specific scopes like `k:app_record:read`
-4. **Redirect URI**: Must match exactly what's registered in Cybozu Developer Network
+kintone OAuthを扱う際：
+1. **エンドポイント**: `https://{subdomain}.cybozu.com/oauth2/authorization`と`/oauth2/token`を使用
+2. **認証**: 資格情報はBasic Authヘッダーではなく、リクエストボディに含める
+3. **スコープ**: `k:app_record:read`のようなkintone固有のスコープを使用
+4. **リダイレクトURI**: Cybozu Developer Networkに登録されたものと完全に一致する必要がある
 
-### Common Issues
-- **401 Error**: Usually means client credentials are incorrect or redirect URI mismatch
-- **Token Exchange**: kintone expects credentials in request body with `grant_type=authorization_code`
+### よくある問題
+- **401エラー**: 通常、クライアント資格情報が正しくないか、リダイレクトURIの不一致を意味する
+- **トークン交換**: kintoneは`grant_type=authorization_code`とともにリクエストボディに資格情報を期待する
 
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+## 利用可能なMCPツール
+
+1. **getRecords** - kintoneアプリからレコードを取得
+   - 必須パラメータ: `appId`
+   - オプション: `fields`、`query`、`totalCount`
+
+2. **addRecord** - kintoneアプリに新しいレコードを追加
+   - 必須パラメータ: `appId`、`record`
+
+3. **getApp** - アプリ情報とフィールド定義を取得
+   - 必須パラメータ: `appId`
+
+4. **searchApps** - アプリ名で検索して複数のアプリ情報を取得
+   - 必須パラメータ: `name` (アプリ名の一部でも検索可能)
+   - オプション: `limit` (最大100、デフォルト100)、`offset` (スキップ数、デフォルト0)

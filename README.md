@@ -119,6 +119,7 @@ Cloudflare Workers上で動作し、認証情報をローカルに保存する�
 - getRecords - kintoneアプリからレコードを取得
 - addRecord - kintoneアプリに新規レコードを追加
 - getApp - アプリ情報とフィールド定義を取得
+- searchApps - アプリ名で検索して複数のアプリ情報を取得
 
 #### 2. 二重OAuth認証
 
