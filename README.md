@@ -83,7 +83,6 @@ OAuth で認証するため、（秘匿すべき）認証情報をローカル�
 <img height="400" src="png/kintone-oauth-mcp-server-cfw5.png" alt="OAuthクライアントを追加" />
 <!-- markdownlint-enable MD033 -->
 
-
 ### Claude DesktopからリモートMCPサーバーにアクセス
 
 Claude Desktopで、Settings -> Developer -> Edit Configを開き、以下の設定を追加。Claude Desktopを再起動すると、OAuthログイン画面が表示され、認証フローを完了するとClaudeがMCPサーバーにアクセスできるようになります。
@@ -102,6 +101,52 @@ Claude Desktopで、Settings -> Developer -> Edit Configを開き、以下の設
   }
 }
 ```
+
+## 解説
+
+### 🎯 これは何をするものか
+
+AIアシスタント（Claudeなど）がkintoneのAPIに安全にアクセスできるようにするサーバーです。
+
+Cloudflare Workers上で動作し、認証情報をローカルに保存することなく、OAuth認証を通じてkintoneとの連携を実現します。
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/r3-yamauchi/kintone-oauth-mcp-server-cfw)
+
+### 🔧 主な機能
+
+#### 1. 利用可能なツール
+
+- getRecords - kintoneアプリからレコードを取得
+- addRecord - kintoneアプリに新規レコードを追加
+- getApp - アプリ情報とフィールド定義を取得
+
+#### 2. 二重OAuth認証
+
+- MCPクライアント（Claude）との認証
+- kintone/Cybozuアカウントとの認証
+
+#### 3. 認証フロー
+
+1. MCPクライアントが接続
+2. ユーザーが承認画面で許可
+3. kintoneのOAuth画面へリダイレクト
+4. kintoneでの認証完了後、アクセストークンを取得
+5. 安全な接続が確立
+
+### 🏗️ アーキテクチャ
+
+- Cloudflare Workers - サーバーレスでスケーラブル
+- KV Storage - OAuth状態の永続化
+- 暗号化されたCookie - 承認済みクライアントの記憶
+
+### 💡 メリット
+
+1. セキュア - APIキーの共有不要
+2. マルチユーザー対応 - 1つのデプロイで複数ユーザーが利用可能
+3. ブラウザ/デスクトップ対応 - Claude WebやClaude Desktopから利用可能
+4. コスト効率 - サーバーレスで必要な時だけ実行
+
+このプロジェクトは、GitHubのOAuthテンプレートをベースに、kintone専用にカスタマイズされた本格的なMCPサーバー実装となっています。
 
 ## このプロジェクトの由来
 
