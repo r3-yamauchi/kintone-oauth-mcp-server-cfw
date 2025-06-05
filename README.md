@@ -8,6 +8,10 @@ OAuth で認証するため、（秘匿すべき）認証情報をローカル�
 
 プログラムをローカルにセットアップする必要がなく、Webブラウザー版の Claude からも使用することができます。
 
+現状この MCP Server は [Web版の Claude](https://claude.ai/settings/integrations), macOS版の [Claude Desktopアプリ](https://claude.ai/download), [Postman](https://www.postman.com/), [Cloudflare AI Playground](https://playground.ai.cloudflare.com/) で機能することを確認しています。
+
+ChatGPT向けに[コネクタ](https://platform.openai.com/docs/mcp)として設定ができることは確認しましたが、実際に試してみても現状ではうまく機能が使われないようです。
+
 ## 始め方
 
 ### cybozu.com共通管理画面で OAuthクライアントを追加
@@ -31,13 +35,13 @@ OAuth で認証するため、（秘匿すべき）認証情報をローカル�
 - OAuthクライアントを作成した際に控えた値を Wranglerの設定ファイル（wrangler.jsonc）内に記入します。：
 
 ```json
-	"vars": {
-		"CYBOZU_CLIENT_ID": "<your cybozu.com client id>",
-		"CYBOZU_CLIENT_SECRET": "<your cybozu.com client secret>",
-		"CYBOZU_SUBDOMAIN": "<your cybozu.com sub domain>", # your cybozu.com subdomain
-		"COOKIE_ENCRYPTION_KEY": "<your cookie encryption key>", # add any random string here e.g. openssl rand -hex 32
-		"WORKER_URL": "<your worker url>"
-	},
+"vars": {
+   "CYBOZU_CLIENT_ID": "<your cybozu.com client id>",
+   "CYBOZU_CLIENT_SECRET": "<your cybozu.com client secret>",
+   "CYBOZU_SUBDOMAIN": "<your cybozu.com sub domain>", # your cybozu.com subdomain
+   "COOKIE_ENCRYPTION_KEY": "<your cookie encryption key>", # add any random string here e.g. openssl rand -hex 32
+   "WORKER_URL": "<your worker url>"
+},
 ```
 
 #### KV名前空間の作成
@@ -87,7 +91,6 @@ OAuth で認証するため、（秘匿すべき）認証情報をローカル�
 
 Claude Desktopで、Settings -> Developer -> Edit Configを開き、以下の設定を追加。Claude Desktopを再起動すると、OAuthログイン画面が表示され、認証フローを完了するとClaudeがMCPサーバーにアクセスできるようになります。
 
-
 ```json
 {
   "mcpServers": {
@@ -114,12 +117,47 @@ Cloudflare Workers上で動作し、認証情報をローカルに保存する�
 
 ### 🔧 主な機能
 
-#### 1. 利用可能なツール
+#### 1. 利用可能なツール（全28ツール）
 
-- getRecords - kintoneアプリからレコードを取得
-- addRecord - kintoneアプリに新規レコードを追加
-- getApp - アプリ情報とフィールド定義を取得
-- searchApps - アプリ名で検索して複数のアプリ情報を取得
+**レコード操作**
+- getRecords - レコード一覧を取得
+- getRecord - 単一レコードを取得
+- addRecord - レコードを追加
+- addRecords - 複数レコードを一括追加
+- updateRecord - レコードを更新
+- getRecordComments - レコードのコメントを取得
+- addRecordComment - レコードにコメントを投稿
+- evaluateRecordsAcl - レコードのアクセス権を評価
+
+**アプリ設定**
+- getApp - アプリ基本情報を取得
+- getAppFields - フィールド一覧を取得
+- searchApps - アプリを検索
+- getAppSettings - アプリの一般設定を取得
+- getFormLayout - フォームレイアウトを取得
+- getViews - 一覧（ビュー）設定を取得
+- getProcessManagement - プロセス管理設定を取得
+- getAppReports - グラフ設定を取得
+- getAppCustomize - JavaScript/CSSカスタマイズ設定を取得
+- getAppActions - アクション設定を取得
+
+**ファイル操作**
+- uploadFile - ファイルアップロード
+- downloadFile - ファイルダウンロード
+
+**アクセス権**
+- getAppAcl - アプリのアクセス権を取得
+- getRecordAcl - レコードのアクセス権設定を取得
+- getFieldAcl - フィールドのアクセス権を取得
+
+**通知設定**
+- getAppNotificationsGeneral - アプリの条件通知を取得
+- getAppNotificationsPerRecord - レコードの条件通知を取得
+- getAppNotificationsReminder - リマインダー通知を取得
+
+**デプロイ管理**
+- updateAppCustomize - JavaScript/CSSカスタマイズを更新
+- deployApp - アプリ設定を運用環境へ反映
 
 #### 2. 二重OAuth認証
 
@@ -172,7 +210,13 @@ GitHub OAuthテンプレートをkintoneに対応させるため、以下の変�
    - `GITHUB_CLIENT_ID` → `CYBOZU_CLIENT_ID`
    - `GITHUB_CLIENT_SECRET` → `CYBOZU_CLIENT_SECRET`
    - `CYBOZU_SUBDOMAIN` を追加（kintoneのサブドメイン用）
-5. **スコープ**: kintone APIのスコープを使用 (例: `k:app_record:read`, `k:app_record:write`, `k:app_settings:read` )
+5. **スコープ**: kintone APIのスコープを使用
+   - `k:app_record:read` - レコード読み取り権限
+   - `k:app_record:write` - レコード書き込み権限
+   - `k:app_settings:read` - アプリ設定読み取り権限
+   - `k:app_settings:write` - アプリ設定書き込み権限（カスタマイズ更新用）
+   - `k:file:read` - ファイル読み取り権限
+   - `k:file:write` - ファイル書き込み権限
 
 ## ローカル開発とテスト
 
@@ -198,7 +242,7 @@ Inspectorで `https://localhost:8788/sse` に接続してテスト。
      - 開発環境: `https://localhost:8788/callback`
    - OAuthアプリケーションが「有効」になっている
    - client_idとclient_secretが正しくコピーされている
-   - 必要なスコープが設定されている: `k:app_record:read k:app_record:write k:app_settings:read`
+   - 必要なスコープが設定されている: `k:app_record:read k:app_record:write k:app_settings:read k:app_settings:write k:file:read k:file:write`
 
 2. **環境変数の確認**
 

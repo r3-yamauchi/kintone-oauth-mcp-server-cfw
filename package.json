@@ -13,8 +13,6 @@
     "@modelcontextprotocol/sdk": "^1.12.0",
     "agents": "^0.0.93",
     "hono": "^4.7.10",
-    "just-pick": "^4.2.0",
-    "octokit": "^5.0.2",
     "workers-mcp": "^0.0.13",
     "zod": "^3.25.28"
   },
