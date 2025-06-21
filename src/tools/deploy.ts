@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { KintoneErrorResponse } from "../types";
 
-// Tool schemas
+// ツールスキーマ
 export const updateAppCustomizeSchema = z.object({
   appId: z.union([z.number(), z.string()]).describe("The kintone app ID"),
   desktop: z.object({
@@ -48,7 +48,7 @@ export const deployAppSchema = z.object({
   revert: z.boolean().optional().describe("Revert to previous settings on error")
 });
 
-// Tool implementations
+// ツール実装
 export const deployTools = {
   async updateAppCustomize(params: z.infer<typeof updateAppCustomizeSchema>, props: { subdomain: string; accessToken: string }) {
     const { appId, desktop, mobile, scope, revision } = params;

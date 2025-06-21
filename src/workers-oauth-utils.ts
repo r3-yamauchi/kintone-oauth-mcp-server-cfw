@@ -1,22 +1,22 @@
 // workers-oauth-utils.ts
 
-import type { ClientInfo, AuthRequest } from "@cloudflare/workers-oauth-provider"; // Adjust path if necessary
+import type { ClientInfo, AuthRequest } from "@cloudflare/workers-oauth-provider"; // 必要に応じてパスを調整
 
 const COOKIE_NAME = "mcp-approved-clients";
 const ONE_YEAR_IN_SECONDS = 31536000;
 
-// --- Helper Functions ---
+// --- ヘルパー関数 ---
 
 /**
- * Encodes arbitrary data to a URL-safe base64 string.
- * @param data - The data to encode (will be stringified).
- * @returns A URL-safe base64 encoded string.
+ * 任意のデータをURLセーフなbase64文字列にエンコードします。
+ * @param data - エンコードするデータ（文字列化されます）
+ * @returns URLセーフなbase64エンコード文字列
  */
 function encodeState(data: any): string {
   try {
     const jsonString = JSON.stringify(data);
-    // Use btoa for simplicity, assuming Worker environment supports it well enough
-    // For complex binary data, a Buffer/Uint8Array approach might be better
+    // シンプルにするためbtoaを使用、Worker環境が十分にサポートしていることを前提
+    // 複雑なバイナリデータの場合、Buffer/Uint8Arrayアプローチの方が良いかもしれません
     return btoa(jsonString);
   } catch (e) {
     console.error("Error encoding state:", e);
@@ -25,9 +25,9 @@ function encodeState(data: any): string {
 }
 
 /**
- * Decodes a URL-safe base64 string back to its original data.
- * @param encoded - The URL-safe base64 encoded string.
- * @returns The original data.
+ * URLセーフなbase64文字列を元のデータにデコードします。
+ * @param encoded - URLセーフなbase64エンコード文字列
+ * @returns 元のデータ
  */
 function decodeState<T = any>(encoded: string): T {
   try {
@@ -40,9 +40,9 @@ function decodeState<T = any>(encoded: string): T {
 }
 
 /**
- * Imports a secret key string for HMAC-SHA256 signing.
- * @param secret - The raw secret key string.
- * @returns A promise resolving to the CryptoKey object.
+ * HMAC-SHA256署名用の秘密鍵文字列をインポートします。
+ * @param secret - 生の秘密鍵文字列
+ * @returns CryptoKeyオブジェクトに解決されるPromise
  */
 async function importKey(secret: string): Promise<CryptoKey> {
   if (!secret) {
@@ -53,51 +53,51 @@ async function importKey(secret: string): Promise<CryptoKey> {
     "raw",
     enc.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
-    false, // not extractable
-    ["sign", "verify"], // key usages
+    false, // 抽出不可
+    ["sign", "verify"], // 鍵の使用用途
   );
 }
 
 /**
- * Signs data using HMAC-SHA256.
- * @param key - The CryptoKey for signing.
- * @param data - The string data to sign.
- * @returns A promise resolving to the signature as a hex string.
+ * HMAC-SHA256を使用してデータを署名します。
+ * @param key - 署名用のCryptoKey
+ * @param data - 署名する文字列データ
+ * @returns 16進文字列としての署名に解決されるPromise
  */
 async function signData(key: CryptoKey, data: string): Promise<string> {
   const enc = new TextEncoder();
   const signatureBuffer = await crypto.subtle.sign("HMAC", key, enc.encode(data));
-  // Convert ArrayBuffer to hex string
+  // ArrayBufferを16進文字列に変換
   return Array.from(new Uint8Array(signatureBuffer))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
 /**
- * Verifies an HMAC-SHA256 signature.
- * @param key - The CryptoKey for verification.
- * @param signatureHex - The signature to verify (hex string).
- * @param data - The original data that was signed.
- * @returns A promise resolving to true if the signature is valid, false otherwise.
+ * HMAC-SHA256署名を検証します。
+ * @param key - 検証用のCryptoKey
+ * @param signatureHex - 検証する署名（16進文字列）
+ * @param data - 署名された元のデータ
+ * @returns 署名が有効な場合はtrue、そうでない場合はfalseに解決されるPromise
  */
 async function verifySignature(key: CryptoKey, signatureHex: string, data: string): Promise<boolean> {
   const enc = new TextEncoder();
   try {
-    // Convert hex signature back to ArrayBuffer
+    // 16進署名をArrayBufferに戻す
     const signatureBytes = new Uint8Array(signatureHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
     return await crypto.subtle.verify("HMAC", key, signatureBytes.buffer, enc.encode(data));
   } catch (e) {
-    // Handle errors during hex parsing or verification
+    // 16進解析または検証中のエラーを処理
     console.error("Error verifying signature:", e);
     return false;
   }
 }
 
 /**
- * Parses the signed cookie and verifies its integrity.
- * @param cookieHeader - The value of the Cookie header from the request.
- * @param secret - The secret key used for signing.
- * @returns A promise resolving to the list of approved client IDs if the cookie is valid, otherwise null.
+ * 署名されたクッキーを解析し、その整合性を検証します。
+ * @param cookieHeader - リクエストからのCookieヘッダーの値
+ * @param secret - 署名に使用される秘密鍵
+ * @returns クッキーが有効な場合は承認されたクライアントIDのリスト、そうでない場合はnullに解決されるPromise
  */
 async function getApprovedClientsFromCookie(cookieHeader: string | null, secret: string): Promise<string[] | null> {
   if (!cookieHeader) return null;
@@ -112,27 +112,27 @@ async function getApprovedClientsFromCookie(cookieHeader: string | null, secret:
 
   if (parts.length !== 2) {
     console.warn("Invalid cookie format received.");
-    return null; // Invalid format
+    return null; // 無効なフォーマット
   }
 
   const [signatureHex, base64Payload] = parts;
-  const payload = atob(base64Payload); // Assuming payload is base64 encoded JSON string
+  const payload = atob(base64Payload); // ペイロードがbase64エンコードされたJSON文字列であることを前提
 
   const key = await importKey(secret);
   const isValid = await verifySignature(key, signatureHex, payload);
 
   if (!isValid) {
     console.warn("Cookie signature verification failed.");
-    return null; // Signature invalid
+    return null; // 署名が無効
   }
 
   try {
     const approvedClients = JSON.parse(payload);
     if (!Array.isArray(approvedClients)) {
       console.warn("Cookie payload is not an array.");
-      return null; // Payload isn't an array
+      return null; // ペイロードが配列ではない
     }
-    // Ensure all elements are strings
+    // すべての要素が文字列であることを確認
     if (!approvedClients.every((item) => typeof item === "string")) {
       console.warn("Cookie payload contains non-string elements.");
       return null;
@@ -140,20 +140,20 @@ async function getApprovedClientsFromCookie(cookieHeader: string | null, secret:
     return approvedClients as string[];
   } catch (e) {
     console.error("Error parsing cookie payload:", e);
-    return null; // JSON parsing failed
+    return null; // JSON解析に失敗
   }
 }
 
-// --- Exported Functions ---
+// --- エクスポートされた関数 ---
 
 /**
- * Checks if a given client ID has already been approved by the user,
- * based on a signed cookie.
+ * 署名されたクッキーに基づいて、指定されたクライアントIDがすでにユーザーによって
+ * 承認されているかどうかをチェックします。
  *
- * @param request - The incoming Request object to read cookies from.
- * @param clientId - The OAuth client ID to check approval for.
- * @param cookieSecret - The secret key used to sign/verify the approval cookie.
- * @returns A promise resolving to true if the client ID is in the list of approved clients in a valid cookie, false otherwise.
+ * @param request - クッキーを読み取るための入力Requestオブジェクト
+ * @param clientId - 承認をチェックするOAuthクライアントID
+ * @param cookieSecret - 承認クッキーの署名/検証に使用される秘密鍵
+ * @returns クライアントIDが有効なクッキーの承認されたクライアントのリストにある場合はtrue、そうでない場合はfalseに解決されるPromise
  */
 export async function clientIdAlreadyApproved(request: Request, clientId: string, cookieSecret: string): Promise<boolean> {
   if (!clientId) return false;
@@ -164,15 +164,15 @@ export async function clientIdAlreadyApproved(request: Request, clientId: string
 }
 
 /**
- * Configuration for the approval dialog
+ * 承認ダイアログの設定
  */
 export interface ApprovalDialogOptions {
   /**
-   * Client information to display in the approval dialog
+   * 承認ダイアログに表示するクライアント情報
    */
   client: ClientInfo | null;
   /**
-   * Server information to display in the approval dialog
+   * 承認ダイアログに表示するサーバー情報
    */
   server: {
     name: string;
@@ -180,71 +180,71 @@ export interface ApprovalDialogOptions {
     description?: string;
   };
   /**
-   * Arbitrary state data to pass through the approval flow
-   * Will be encoded in the form and returned when approval is complete
+   * 承認フローを通じて渡される任意の状態データ
+   * フォームにエンコードされ、承認が完了したときに返されます
    */
   state: Record<string, any>;
   /**
-   * Name of the cookie to use for storing approvals
+   * 承認の保存に使用するクッキーの名前
    * @default "mcp_approved_clients"
    */
   cookieName?: string;
   /**
-   * Secret used to sign cookies for verification
-   * Can be a string or Uint8Array
-   * @default Built-in Uint8Array key
+   * 検証用のクッキー署名に使用される秘密鍵
+   * 文字列またはUint8Arrayを指定可能
+   * @default ビルトインUint8Arrayキー
    */
   cookieSecret?: string | Uint8Array;
   /**
-   * Cookie domain
-   * @default current domain
+   * Cookieドメイン
+   * @default 現在のドメイン
    */
   cookieDomain?: string;
   /**
-   * Cookie path
+   * Cookieパス
    * @default "/"
    */
   cookiePath?: string;
   /**
-   * Cookie max age in seconds
-   * @default 30 days
+   * Cookieの最大年齢（秒単位）
+   * @default 30日
    */
   cookieMaxAge?: number;
 }
 
 /**
- * Renders an approval dialog for OAuth authorization
- * The dialog displays information about the client and server
- * and includes a form to submit approval
+ * OAuth認証用の承認ダイアログをレンダリングします
+ * ダイアログはクライアントとサーバーの情報を表示し、
+ * 承認を送信するためのフォームを含みます
  *
- * @param request - The HTTP request
- * @param options - Configuration for the approval dialog
- * @returns A Response containing the HTML approval dialog
+ * @param request - HTTPリクエスト
+ * @param options - 承認ダイアログの設定
+ * @returns HTML承認ダイアログを含むResponse
  */
 export function renderApprovalDialog(request: Request, options: ApprovalDialogOptions): Response {
   const { client, server, state } = options;
 
-  // Encode state for form submission
+  // フォーム送信用に状態をエンコード
   const encodedState = btoa(JSON.stringify(state));
 
-  // Sanitize any untrusted content
+  // 信頼できないコンテンツをサニタイズ
   const serverName = sanitizeHtml(server.name);
   const clientName = client?.clientName ? sanitizeHtml(client.clientName) : "Unknown MCP Client";
   const serverDescription = server.description ? sanitizeHtml(server.description) : "";
 
-  // Safe URLs
+  // 安全なURL
   const logoUrl = server.logo ? sanitizeHtml(server.logo) : "";
   const clientUri = client?.clientUri ? sanitizeHtml(client.clientUri) : "";
   const policyUri = client?.policyUri ? sanitizeHtml(client.policyUri) : "";
   const tosUri = client?.tosUri ? sanitizeHtml(client.tosUri) : "";
 
-  // Client contacts
+  // クライアントの連絡先
   const contacts = client?.contacts && client.contacts.length > 0 ? sanitizeHtml(client.contacts.join(", ")) : "";
 
-  // Get redirect URIs
+  // リダイレクトURIを取得
   const redirectUris = client?.redirectUris && client.redirectUris.length > 0 ? client.redirectUris.map((uri) => sanitizeHtml(uri)) : [];
 
-  // Generate HTML for the approval dialog
+  // 承認ダイアログ用のHTMLを生成
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -253,7 +253,7 @@ export function renderApprovalDialog(request: Request, options: ApprovalDialogOp
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${clientName} | Authorization Request</title>
         <style>
-          /* Modern, responsive styling with system fonts */
+          /* システムフォントを使用したモダンでレスポンシブなスタイリング */
           :root {
             --primary-color: #0070f3;
             --error-color: #f44336;
@@ -396,7 +396,7 @@ export function renderApprovalDialog(request: Request, options: ApprovalDialogOp
             color: var(--text-color);
           }
           
-          /* Responsive adjustments */
+          /* レスポンシブ調整 */
           @media (max-width: 640px) {
             .container {
               margin: 1rem auto;
@@ -543,23 +543,23 @@ export function renderApprovalDialog(request: Request, options: ApprovalDialogOp
 }
 
 /**
- * Result of parsing the approval form submission.
+ * 承認フォーム送信の解析結果。
  */
 export interface ParsedApprovalResult {
-  /** The original state object passed through the form. */
+  /** フォームを通じて渡された元の状態オブジェクト。 */
   state: any;
-  /** Headers to set on the redirect response, including the Set-Cookie header. */
+  /** Set-Cookieヘッダーを含む、リダイレクトレスポンスに設定するヘッダー。 */
   headers: Record<string, string>;
 }
 
 /**
- * Parses the form submission from the approval dialog, extracts the state,
- * and generates Set-Cookie headers to mark the client as approved.
+ * 承認ダイアログからのフォーム送信を解析し、状態を抽出し、
+ * クライアントを承認済みとしてマークするためのSet-Cookieヘッダーを生成します。
  *
- * @param request - The incoming POST Request object containing the form data.
- * @param cookieSecret - The secret key used to sign the approval cookie.
- * @returns A promise resolving to an object containing the parsed state and necessary headers.
- * @throws If the request method is not POST, form data is invalid, or state is missing.
+ * @param request - フォームデータを含む入力POST Requestオブジェクト
+ * @param cookieSecret - 承認クッキーの署名に使用される秘密鍵
+ * @returns 解析された状態と必要なヘッダーを含むオブジェクトに解決されるPromise
+ * @throws リクエストメソッドがPOSTでない、フォームデータが無効、または状態が欠落している場合
  */
 export async function parseRedirectApproval(request: Request, cookieSecret: string): Promise<ParsedApprovalResult> {
   if (request.method !== "POST") {
@@ -577,32 +577,32 @@ export async function parseRedirectApproval(request: Request, cookieSecret: stri
       throw new Error("Missing or invalid 'state' in form data.");
     }
 
-    state = decodeState<{ oauthReqInfo?: AuthRequest }>(encodedState); // Decode the state
-    clientId = state?.oauthReqInfo?.clientId; // Extract clientId from within the state
+    state = decodeState<{ oauthReqInfo?: AuthRequest }>(encodedState); // 状態をデコード
+    clientId = state?.oauthReqInfo?.clientId; // 状態内からclientIdを抽出
 
     if (!clientId) {
       throw new Error("Could not extract clientId from state object.");
     }
   } catch (e) {
     console.error("Error processing form submission:", e);
-    // Rethrow or handle as appropriate, maybe return a specific error response
+    // 適切に再スローまたは処理、特定のエラーレスポンスを返すことも可能
     throw new Error(`Failed to parse approval form: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // Get existing approved clients
+  // 既存の承認されたクライアントを取得
   const cookieHeader = request.headers.get("Cookie");
   const existingApprovedClients = (await getApprovedClientsFromCookie(cookieHeader, cookieSecret)) || [];
 
-  // Add the newly approved client ID (avoid duplicates)
+  // 新しく承認されたクライアントIDを追加（重複を避ける）
   const updatedApprovedClients = Array.from(new Set([...existingApprovedClients, clientId]));
 
-  // Sign the updated list
+  // 更新されたリストを署名
   const payload = JSON.stringify(updatedApprovedClients);
   const key = await importKey(cookieSecret);
   const signature = await signData(key, payload);
-  const newCookieValue = `${signature}.${btoa(payload)}`; // signature.base64(payload)
+  const newCookieValue = `${signature}.${btoa(payload)}`; // 署名.base64(ペイロード)
 
-  // Generate Set-Cookie header
+  // Set-Cookieヘッダーを生成
   const headers: Record<string, string> = {
     "Set-Cookie": `${COOKIE_NAME}=${newCookieValue}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${ONE_YEAR_IN_SECONDS}`,
   };
@@ -611,9 +611,9 @@ export async function parseRedirectApproval(request: Request, cookieSecret: stri
 }
 
 /**
- * Sanitizes HTML content to prevent XSS attacks
- * @param unsafe - The unsafe string that might contain HTML
- * @returns A safe string with HTML special characters escaped
+ * XSS攻撃を防ぐためにHTMLコンテンツをサニタイズします
+ * @param unsafe - HTMLを含む可能性のある安全でない文字列
+ * @returns HTML特殊文字がエスケープされた安全な文字列
  */
 function sanitizeHtml(unsafe: string): string {
   return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");

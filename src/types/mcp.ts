@@ -1,5 +1,5 @@
-// Context from the auth process, encrypted & stored in the auth token
-// and provided to the DurableMCP as this.props
+// 認証プロセスからのコンテキスト、暗号化されて認証トークンに保存され、
+// DurableMCPにthis.propsとして提供されます
 export type Props = {
   login: string;
   name: string;

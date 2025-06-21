@@ -40,7 +40,7 @@ import {
 } from "./deploy";
 
 export function registerTools(server: McpServer, props: Props) {
-  // Record tools
+  // レコードツール
   server.tool(
     "getRecords",
     "Get records from a kintone app",
@@ -97,7 +97,7 @@ export function registerTools(server: McpServer, props: Props) {
     async (params) => recordTools.evaluateRecordsAcl(params, props)
   );
 
-  // App tools
+  // アプリツール
   server.tool(
     "getApp",
     "Get kintone app general information (name, description, etc.)",
@@ -168,7 +168,7 @@ export function registerTools(server: McpServer, props: Props) {
     async (params) => appTools.getAppActions(params, props)
   );
 
-  // File tools
+  // ファイルツール
   server.tool(
     "uploadFile",
     "Upload a file to kintone (returns file key for use in record fields)",
@@ -183,7 +183,7 @@ export function registerTools(server: McpServer, props: Props) {
     async (params) => fileTools.downloadFile(params, props)
   );
 
-  // ACL tools
+  // ACLツール
   server.tool(
     "getAppAcl",
     "Get app-level access permissions",
@@ -205,7 +205,7 @@ export function registerTools(server: McpServer, props: Props) {
     async (params) => aclTools.getFieldAcl(params, props)
   );
 
-  // Notification tools
+  // 通知ツール
   server.tool(
     "getAppNotificationsGeneral",
     "Get app condition notification settings",
@@ -227,7 +227,7 @@ export function registerTools(server: McpServer, props: Props) {
     async (params) => notificationTools.getAppNotificationsReminder(params, props)
   );
 
-  // Deploy tools
+  // デプロイツール
   server.tool(
     "updateAppCustomize",
     "Update JavaScript/CSS customization settings (preview)",

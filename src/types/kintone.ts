@@ -1,21 +1,21 @@
-// kintone API error response type
+// kintone APIエラーレスポンス型
 export type KintoneErrorResponse = {
   code?: string;
   id?: string;
   message?: string;
 };
 
-// Record field value types
+// レコードフィールド値の型
 export type FieldValue = {
   value: any;
 };
 
-// Record type
+// レコード型
 export type KintoneRecord = {
   [fieldCode: string]: FieldValue;
 };
 
-// App info type
+// アプリ情報型
 export type KintoneApp = {
   appId: string;
   code: string;

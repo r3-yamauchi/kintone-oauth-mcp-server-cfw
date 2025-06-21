@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { KintoneErrorResponse } from "../types";
 
-// Tool schemas
+// ツールスキーマ
 export const getAppNotificationsGeneralSchema = z.object({
   appId: z.union([z.number(), z.string()]).describe("The kintone app ID")
 });
@@ -14,7 +14,7 @@ export const getAppNotificationsReminderSchema = z.object({
   appId: z.union([z.number(), z.string()]).describe("The kintone app ID")
 });
 
-// Tool implementations
+// ツール実装
 export const notificationTools = {
   async getAppNotificationsGeneral(params: z.infer<typeof getAppNotificationsGeneralSchema>, props: { subdomain: string; accessToken: string }) {
     const { appId } = params;

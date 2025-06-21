@@ -31,14 +31,14 @@ app.get("/authorize", async (c) => {
     server: {
       name: "Cloudflare kintone MCP Server", // cSpell:ignore kintone
       logo: "https://cybozu.co.jp/img/icons/favicon.ico",
-      description: "This is a MCP Remote Server using Cybozu/kintone for authentication.", // optional // cSpell:ignore kintone
+      description: "This is a MCP Remote Server using Cybozu/kintone for authentication.", // オプション // cSpell:ignore kintone
     },
-    state: { oauthReqInfo }, // arbitrary data that flows through the form submission below
+    state: { oauthReqInfo }, // フォーム送信を通じて流れる任意のデータ
   });
 });
 
 app.post("/authorize", async (c) => {
-  // Validates form submission, extracts state, and generates Set-Cookie headers to skip approval dialog next time
+  // フォーム送信を検証し、状態を抽出し、次回承認ダイアログをスキップするためのSet-Cookieヘッダーを生成
   const { state, headers } = await parseRedirectApproval(c.req.raw, env.COOKIE_ENCRYPTION_KEY);
   if (!state.oauthReqInfo) {
     return c.text("Invalid request", 400);
@@ -78,20 +78,20 @@ async function redirectToCybozu(request: Request, oauthReqInfo: AuthRequest, hea
 }
 
 /**
- * OAuth Callback Endpoint
+ * OAuth コールバックエンドポイント
  *
- * This route handles the callback from Cybozu after user authentication.
- * It exchanges the temporary code for an access token, then stores some
- * user metadata & the auth token as part of the 'props' on the token passed
- * down to the client. It ends by redirecting the client back to _its_ callback URL
+ * このルートはユーザー認証後のCybozuからのコールバックを処理します。
+ * 一時的なコードをアクセストークンと交換し、ユーザーのメタデータと
+ * 認証トークンをクライアントに渡されるトークンの'props'の一部として保存します。
+ * 最後に、クライアントをそのコールバックURLにリダイレクトして終了します。
  */
 app.get("/callback", async (c) => {
   try {
-    // Log callback parameters
+    // コールバックパラメータをログ出力
     console.error("\n=== OAuth Callback Received ===");
     console.error("Query params:", Object.fromEntries(new URL(c.req.url).searchParams));
     
-    // Check for OAuth errors
+    // OAuthエラーをチェック
     const error = c.req.query("error");
     if (error) {
       const errorDescription = c.req.query("error_description");
@@ -104,14 +104,14 @@ app.get("/callback", async (c) => {
       `, 400);
     }
     
-    // Check for authorization code
+    // 認証コードをチェック
     const code = c.req.query("code");
     if (!code) {
       console.error("Missing authorization code");
       return c.text("Missing authorization code", 400);
     }
     
-    // Get the oathReqInfo out of KV
+    // KVからoathReqInfoを取得
     const stateParam = c.req.query("state");
     if (!stateParam) {
       console.error("Missing state parameter");
@@ -138,7 +138,7 @@ app.get("/callback", async (c) => {
       ? `https://localhost:${url.port}/callback`
       : `https://${c.env.WORKER_URL}/callback`;
   
-    // Exchange the code for an access token
+    // コードをアクセストークンと交換
     console.error("=== OAuth Token Exchange Debug ===");
     console.error("Token URL:", `https://${c.env.CYBOZU_SUBDOMAIN}.cybozu.com/oauth2/token`);
     console.error("Client ID:", c.env.CYBOZU_CLIENT_ID);
@@ -166,14 +166,14 @@ app.get("/callback", async (c) => {
     
     if (errResponse) return errResponse;
 
-    // Fetch the user info from Cybozu
-    // Note: Cybozu OAuth doesn't provide user info endpoint by default
-    // You might need to use kintone APIs to get user info if needed // cSpell:ignore kintone
-    const userId = "Administrator"; // Placeholder - you'd implement actual user fetching
+    // Cybozuからユーザー情報を取得
+    // 注意: Cybozu OAuthはデフォルトでユーザー情報エンドポイントを提供しません
+    // 必要に応じてkintone APIを使用してユーザー情報を取得する必要があります // cSpell:ignore kintone
+    const userId = "Administrator"; // プレースホルダー - 実際のユーザー取得を実装する必要があります
     const userName = "Administrator";
     const userEmail = "user@example.com";
 
-    // Return back to the MCP client a new token
+    // MCPクライアントに新しいトークンを返す
     console.error("=== CompleteAuthorization Debug ===");
     console.error("oauthReqInfo:", JSON.stringify(oauthReqInfo, null, 2));
     console.error("userId:", userId);
@@ -189,7 +189,7 @@ app.get("/callback", async (c) => {
           label: userName,
         },
         scope: oauthReqInfo.scope,
-        // This will be available on this.props inside MyMCP
+        // これはMyMCP内のthis.propsで利用可能になります
         props: {
           login: userId,
           name: userName,

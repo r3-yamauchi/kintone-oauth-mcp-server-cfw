@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { KintoneErrorResponse } from "../types";
 
-// Tool schemas
+// ツールスキーマ
 export const getAppSchema = z.object({
   appId: z.union([z.number(), z.string()]).describe("The kintone app ID")
 });
@@ -49,7 +49,7 @@ export const getAppActionsSchema = z.object({
   lang: z.string().optional().describe("Language for action names (ja, en, zh, user)")
 });
 
-// Tool implementations
+// ツール実装
 export const appTools = {
   async getApp(params: z.infer<typeof getAppSchema>, props: { subdomain: string; accessToken: string }) {
     const { appId } = params;

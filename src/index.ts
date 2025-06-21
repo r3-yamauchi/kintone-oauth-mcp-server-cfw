@@ -12,7 +12,7 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
   });
 
   async init() {
-    // Debug: Log subdomain and user info
+    // デバッグ: サブドメインとユーザー情報をログ出力
     console.error("=== MCP Init Debug Info ===");
     console.error("Access Token:", this.props.accessToken);
     console.error("Subdomain:", this.props.subdomain);
@@ -20,7 +20,7 @@ export class MyMCP extends McpAgent<Env, {}, Props> {
     console.error("User Name:", this.props.name);
     console.error("=========================");
 
-    // Register all tools
+    // すべてのツールを登録
     registerTools(this.server, this.props);
   }
 }

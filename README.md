@@ -1,38 +1,68 @@
 # リモート Model Context Protocol (MCP) サーバー for kintone via OAuth on Cloudflare Workers
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/r3-yamauchi/kintone-oauth-mcp-server-cfw)
+
 これは Cloudflare Workers として deploy可能な [kintone](https://kintone.cybozu.co.jp/) 用の [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) サーバーのサンプルコードです。
-
-OAuth で認証するため、（秘匿すべき）認証情報をローカルディスク内などに保存しません。
-
-ある cybozu.comドメイン用に この MCP Sever を deploy しておけば、そのドメインを使用する全ての人がこの MCP Server を共用利用することができます。
 
 プログラムをローカルにセットアップする必要がなく、Webブラウザー版の Claude からも使用することができます。
 
-現状この MCP Server は [Web版の Claude](https://claude.ai/settings/integrations), macOS版の [Claude Desktopアプリ](https://claude.ai/download), [Postman](https://www.postman.com/), [Cloudflare AI Playground](https://playground.ai.cloudflare.com/) で機能することを確認しています。
+OAuth認証により、APIキーなどの機密情報をローカルに保存することなく、安全にkintoneとの連携を実現します。
+一度デプロイすれば、同じcybozu.comドメインを使用する全てのユーザーが共有して利用できます。
+
+## 🚀 対応確認済みプラットフォーム
+
+- [Claude Web版](https://claude.ai/settings/integrations)
+- [Claude Desktop](https://claude.ai/download) (macOS/Windows)
+- [Postman](https://www.postman.com/)
+- [Cloudflare AI Playground](https://playground.ai.cloudflare.com/)
 
 ChatGPT向けに[コネクタ](https://platform.openai.com/docs/mcp)として設定ができることは確認しましたが、実際に試してみても現状ではうまく機能が使われないようです。
 
-## 始め方
+## 📋 必要な環境
 
-### cybozu.com共通管理画面で OAuthクライアントを追加
+- Cloudflareアカウント
+- cybozu.comドメインの管理者権限（OAuthクライアント作成用）
+- Node.js 18以上
+- Wrangler CLI
 
-[こちらの手順](https://cybozu.dev/ja/common/docs/oauth-client/add-client/) に従い OAuthクライアントを追加してください。
+## 🔧 セットアップ手順
 
-- 「クライアント名」は分かりやすい名前を設定（「kintone Remote MCP Server on Cloudflare Workers」などといったように）
-- 「リダイレクトエンドポイント」の指定は、この MCP Server を Cloudflare Workers へ deploy したあとで `https://<your-subdomain>.workers.dev/callback` を指定しますので、いったんは `https://localhost:8788/callback` を設定します。
-- 「保存」をクリックすると「クライアントID」と「クライアントシークレット」が自動的に生成されますので手元に控えてください。
+### 1. cybozu.com共通管理でOAuthクライアントを作成
+
+[Cybozuの公式ドキュメント](https://cybozu.dev/ja/common/docs/oauth-client/add-client/)に従ってOAuthクライアントを追加します。
+
+**設定項目：**
+- **クライアント名**: 分かりやすい名前（例：「kintone MCP Server」）
+- **リダイレクトエンドポイント**: 一時的に `https://localhost:8788/callback` を設定
+- **スコープ**: 以下を選択
+  - `k:app_record:read` - レコード読み取り
+  - `k:app_record:write` - レコード書き込み
+  - `k:app_settings:read` - アプリ設定読み取り
+  - `k:app_settings:write` - アプリ設定書き込み
+  - `k:file:read` - ファイル読み取り
+  - `k:file:write` - ファイル書き込み
 
 <!-- markdownlint-disable MD033 -->
 <img height="400" src="png/kintone-oauth-mcp-server-cfw1.png" alt="OAuthクライアントを追加" />
 <!-- markdownlint-enable MD033 -->
 
+- 保存後に表示される「クライアントID」と「クライアントシークレット」を控えておきます。
 - OAuthクライアントの「利用者の設定」で、この MCP Server を利用させるユーザーを指定してください。
 
-### Cloudflare Workers への deploy
+### 2. プロジェクトのセットアップ
 
-- リポジトリをクローンし、依存関係をインストールします: `npm install`.
+```bash
+# リポジトリのクローン
+git clone https://github.com/r3-yamauchi/kintone-oauth-mcp-server-cfw.git
+cd kintone-oauth-mcp-server-cfw
 
-- OAuthクライアントを作成した際に控えた値を Wranglerの設定ファイル（wrangler.jsonc）内に記入します。：
+# 依存関係のインストール
+npm install
+```
+
+### 3. 環境変数の設定
+
+- OAuthクライアントを作成した際に控えた値を Wranglerの設定ファイル（ `wrangler.jsonc` ）内に記入します。：
 
 ```json
 "vars": {
@@ -44,7 +74,7 @@ ChatGPT向けに[コネクタ](https://platform.openai.com/docs/mcp)として設
 },
 ```
 
-#### KV名前空間の作成
+### 4. KV名前空間の作成
 
 - wrangler CLI で以下を実行して KV名前空間を作成します。:
 
@@ -112,8 +142,6 @@ Claude Desktopで、Settings -> Developer -> Edit Configを開き、以下の設
 AIアシスタント（Claudeなど）がkintoneのAPIに安全にアクセスできるようにするサーバーです。
 
 Cloudflare Workers上で動作し、認証情報をローカルに保存することなく、OAuth認証を通じてkintoneとの連携を実現します。
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/r3-yamauchi/kintone-oauth-mcp-server-cfw)
 
 ### 🔧 主な機能
 

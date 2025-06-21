@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { KintoneErrorResponse } from "../types";
 
-// Tool schemas
+// ツールスキーマ
 export const uploadFileSchema = z.object({
   file: z.object({
     name: z.string().describe("File name"),
@@ -14,16 +14,16 @@ export const downloadFileSchema = z.object({
   fileKey: z.string().describe("File key obtained from kintone record")
 });
 
-// Tool implementations
+// ツール実装
 export const fileTools = {
   async uploadFile(params: z.infer<typeof uploadFileSchema>, props: { subdomain: string; accessToken: string }) {
     const { file } = params;
     const url = `https://${props.subdomain}.cybozu.com/k/v1/file.json`;
     
-    // Decode base64 content to binary
+    // base64コンテンツをバイナリにデコード
     const binaryContent = Uint8Array.from(atob(file.content), c => c.charCodeAt(0));
     
-    // Create FormData
+    // FormDataを作成
     const formData = new FormData();
     const blob = new Blob([binaryContent], { type: file.contentType || 'application/octet-stream' });
     formData.append('file', blob, file.name);
@@ -39,7 +39,7 @@ export const fileTools = {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${props.accessToken}`
-        // Note: Don't set Content-Type header when using FormData
+        // 注意: FormDataを使用する場合、Content-Typeヘッダーを設定しない
       },
       body: formData
     });
@@ -59,7 +59,7 @@ export const fileTools = {
       };
     }
     
-    // Return the file key for use in record fields
+    // レコードフィールドで使用するためのファイルキーを返す
     return {
       content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
     };
@@ -69,7 +69,7 @@ export const fileTools = {
     const { fileKey } = params;
     const url = `https://${props.subdomain}.cybozu.com/k/v1/file.json`;
     
-    // For file download, we need to use GET with query parameter
+    // ファイルダウンロードの場合、クエリパラメータ付きのGETを使用する必要がある
     const downloadUrl = `${url}?fileKey=${encodeURIComponent(fileKey)}`;
     
     console.error("=== downloadFile Request Debug ===");
@@ -96,11 +96,11 @@ export const fileTools = {
       };
     }
     
-    // Get the file content as ArrayBuffer
+    // ファイルコンテンツをArrayBufferとして取得
     const arrayBuffer = await response.arrayBuffer();
     const base64Content = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     
-    // Try to get filename from Content-Disposition header
+    // Content-Dispositionヘッダーからファイル名を取得しようとする
     const contentDisposition = response.headers.get('Content-Disposition');
     let filename = 'download';
     if (contentDisposition) {
@@ -110,10 +110,10 @@ export const fileTools = {
       }
     }
     
-    // Get content type
+    // コンテンツタイプを取得
     const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
     
-    // Return file info and base64 content
+    // ファイル情報とbase64コンテンツを返す
     const result = {
       filename: filename,
       contentType: contentType,

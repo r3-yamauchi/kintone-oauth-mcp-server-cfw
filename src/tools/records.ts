@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { KintoneErrorResponse } from "../types";
 
-// Tool schemas
+// ツールスキーマ
 export const getRecordsSchema = z.object({
   appId: z.union([z.number(), z.string()]).describe("The kintone app ID"),
   query: z.string().optional().describe("Query to filter records (optional)"),
@@ -55,7 +55,7 @@ export const evaluateRecordsAclSchema = z.object({
   ids: z.array(z.union([z.number(), z.string()])).describe("Array of record IDs to evaluate")
 });
 
-// Tool implementations
+// ツール実装
 export const recordTools = {
   async getRecords(params: z.infer<typeof getRecordsSchema>, props: { subdomain: string; accessToken: string }) {
     const { appId, query, fields } = params;

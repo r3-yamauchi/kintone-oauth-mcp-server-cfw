@@ -1,13 +1,13 @@
 /**
- * Constructs an authorization URL for an upstream service.
+ * アップストリームサービスの認証URLを構築します。
  *
  * @param {Object} options
- * @param {string} options.upstream_url - The base URL of the upstream service.
- * @param {string} options.client_id - The client ID of the application.
- * @param {string} options.redirect_uri - The redirect URI of the application.
- * @param {string} [options.state] - The state parameter.
+ * @param {string} options.upstream_url - アップストリームサービスのベースURL
+ * @param {string} options.client_id - アプリケーションのクライアントID
+ * @param {string} options.redirect_uri - アプリケーションのリダイレクトURI
+ * @param {string} [options.state] - stateパラメータ
  *
- * @returns {string} The authorization URL.
+ * @returns {string} 認証URL
  */
 export function getUpstreamAuthorizeUrl({
   upstream_url,
@@ -32,16 +32,16 @@ export function getUpstreamAuthorizeUrl({
 }
 
 /**
- * Fetches an authorization token from an upstream service.
+ * アップストリームサービスから認証トークンを取得します。
  *
  * @param {Object} options
- * @param {string} options.client_id - The client ID of the application.
- * @param {string} options.client_secret - The client secret of the application.
- * @param {string} options.code - The authorization code.
- * @param {string} options.redirect_uri - The redirect URI of the application.
- * @param {string} options.upstream_url - The token endpoint URL of the upstream service.
+ * @param {string} options.client_id - アプリケーションのクライアントID
+ * @param {string} options.client_secret - アプリケーションのクライアントシークレット
+ * @param {string} options.code - 認証コード
+ * @param {string} options.redirect_uri - アプリケーションのリダイレクトURI
+ * @param {string} options.upstream_url - アップストリームサービスのトークンエンドポイントURL
  *
- * @returns {Promise<[string, null] | [null, Response]>} A promise that resolves to an array containing the access token or an error response.
+ * @returns {Promise<[string, null] | [null, Response]>} アクセストークンまたはエラーレスポンスを含む配列に解決されるPromise
  */
 export async function fetchUpstreamAuthToken({
   client_id,
@@ -65,9 +65,9 @@ export async function fetchUpstreamAuthToken({
   console.error("Client ID:", client_id);
   console.error("Redirect URI:", redirect_uri);
   
-  // Method 1: Client credentials in request body (standard OAuth2)
+  // 方法1: リクエストボディにクライアント資格情報（標準OAuth2）
   console.error("\n--- Attempt 1: Credentials in Body ---");
-  // Log the actual request body for debugging
+  // デバッグ用に実際のリクエストボディをログ出力
   const bodyParams = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -98,7 +98,7 @@ export async function fetchUpstreamAuthToken({
   const error1 = await resp1.text();
   console.error("✗ Method 1 failed:", resp1.status, error1);
   
-  // Method 2: Basic Authentication
+  // 方法2: Basic認証
   console.error("\n--- Attempt 2: Basic Authentication ---");
   const basicAuth = btoa(`${client_id}:${client_secret}`);
   const resp2 = await fetch(upstream_url, {
@@ -126,7 +126,7 @@ export async function fetchUpstreamAuthToken({
   const error2 = await resp2.text();
   console.error("✗ Method 2 failed:", resp2.status, error2);
   
-  // Both methods failed - detailed error report
+  // 両方法とも失敗 - 詳細なエラーレポート
   console.error("\n=== ALL TOKEN EXCHANGE METHODS FAILED ===");
   console.error("\nMethod 1 (Body Parameters):");
   console.error("- Status:", resp1.status);
@@ -153,8 +153,8 @@ export async function fetchUpstreamAuthToken({
   return [null, new Response(`Token exchange failed: HTTP ${resp1.status}`, { status: resp1.status })];
 }
 
-// Context from the auth process, encrypted & stored in the auth token
-// and provided to the DurableMCP as this.props
+// 認証プロセスからのコンテキスト、暗号化されて認証トークンに保存され、
+// DurableMCPにthis.propsとして提供されます
 export type Props = {
   login: string;
   name: string;
