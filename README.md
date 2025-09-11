@@ -15,8 +15,9 @@ OAuth認証により、APIキーなどの機密情報をローカルに保存す
 - [Claude Desktop](https://claude.ai/download) (macOS/Windows)
 - [Postman](https://www.postman.com/)
 - [Cloudflare AI Playground](https://playground.ai.cloudflare.com/)
+- [ChatGPT Web版](https://platform.openai.com/docs/guides/developer-mode)
 
-ChatGPT向けに[コネクタ](https://platform.openai.com/docs/mcp)として設定ができることは確認しましたが、実際に試してみても現状ではうまく機能が使われないようです。
+2025年9月11日現在 [ChatGPT Web版](https://platform.openai.com/docs/guides/developer-mode) においては ChatGPT の Pro または Plus アカウントで 設定 → コネクタ→ 詳細設定 → 開発者モード を有効にすることにより ベータ版として利用できるという状況のようです。
 
 ## 📋 必要な環境
 
