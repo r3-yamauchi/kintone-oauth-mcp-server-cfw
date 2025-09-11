@@ -4,7 +4,7 @@
 
 これは Cloudflare Workers として deploy可能な [kintone](https://kintone.cybozu.co.jp/) 用の [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) サーバーのサンプルコードです。
 
-プログラムをローカルにセットアップする必要がなく、Webブラウザー版の Claude からも使用することができます。
+プログラムをローカルにセットアップする必要がなく、Webブラウザー版の Claude や ChatGPT から使用することができます。
 
 OAuth認証により、APIキーなどの機密情報をローカルに保存することなく、安全にkintoneとの連携を実現します。
 一度デプロイすれば、同じcybozu.comドメインを使用する全てのユーザーが共有して利用できます。
